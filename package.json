@@ -1,0 +1,47 @@
+{
+  "name": "@grapine.ai/subscribe-pipe",
+  "version": "0.2.0",
+  "description": "Email signup form for Next.js. Connect to Resend, ConvertKit, Brevo, or your own database. Swap providers without touching the form.",
+  "keywords": ["email", "resend", "convertkit", "brevo", "nextjs", "newsletter", "email-capture", "subscription", "subscribe", "pipe", "subscribe-pipe"],
+  "license": "MIT",
+  "author": "Grapine <hello@grapine.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/grapine-ai/subscribe-pipe.git"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.mjs",
+      "require": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    },
+    "./providers": {
+      "import": "./dist/providers.mjs",
+      "require": "./dist/providers.js",
+      "types": "./dist/providers.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "tsup": "^8",
+    "typescript": "^5"
+  }
+}
