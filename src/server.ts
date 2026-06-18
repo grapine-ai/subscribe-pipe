@@ -21,14 +21,18 @@ function extractString(
 /**
  * Returns a Next.js App Router POST handler wired to any SubscribeProvider.
  *
- * @example Resend
+ * @example Resend — multi-product topic routing
  *   import { createSubscribeHandler } from "@grapine.ai/subscribe-pipe/server";
  *   import { resendProvider } from "@grapine.ai/subscribe-pipe/providers";
  *
  *   export const { POST } = createSubscribeHandler(
  *     resendProvider({
  *       apiKey: process.env.RESEND_API_KEY!,
- *       audienceId: process.env.RESEND_AUDIENCE_ID!,
+ *       topics: {
+ *         "product-a": process.env.RESEND_AUDIENCE_PRODUCT_A!,
+ *         "product-b": process.env.RESEND_AUDIENCE_PRODUCT_B!,
+ *       },
+ *       defaultTopic: "product-a",
  *     })
  *   );
  *
@@ -37,7 +41,11 @@ function extractString(
  *
  *   export const { POST } = createSubscribeHandler(
  *     multiProvider(
- *       resendProvider({ apiKey: "...", audienceId: "..." }),
+ *       resendProvider({
+ *         apiKey: "...",
+ *         topics: { "product-a": "aud_111", "product-b": "aud_222" },
+ *         defaultTopic: "product-a",
+ *       }),
  *       dbProvider({ insert: (data) => db.insert(subscribers).values(data) }),
  *     )
  *   );
@@ -54,13 +62,14 @@ export function createSubscribeHandler(provider: SubscribeProvider) {
 
       const email = extractString(body, "email").toLowerCase();
       const source = extractString(body, "source") || "unknown";
+      const topic = extractString(body, "topic") || undefined;
 
       if (!email || !isValidEmail(email)) {
         return Response.json({ error: "A valid email is required." }, { status: 400 });
       }
 
       try {
-        await provider.subscribe({ email, source });
+        await provider.subscribe({ email, source, topic });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not subscribe. Please try again.";
         return Response.json({ error: message }, { status: 500 });

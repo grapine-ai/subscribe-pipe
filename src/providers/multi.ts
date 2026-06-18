@@ -6,7 +6,7 @@ import type { SubscribeProvider } from "../types";
  *
  * @example
  *   multiProvider(
- *     resendProvider({ apiKey, audienceId }),
+ *     resendProvider({ apiKey, topics: { "product-a": "aud_111" }, defaultTopic: "product-a" }),
  *     dbProvider({ insert: ... }),
  *   )
  */

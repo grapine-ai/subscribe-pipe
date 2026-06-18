@@ -5,6 +5,8 @@ import { useState, type FormEvent } from "react";
 export interface EmailCaptureFormProps {
   /** Which page/product this form is on. Sent to the API for your records. */
   source: string;
+  /** Routes the subscriber to the right audience/list. Required by resendProvider. */
+  topic?: string;
   /** API route to POST to. Defaults to /api/subscribe */
   endpoint?: string;
   placeholder?: string;
@@ -26,6 +28,7 @@ type Status = "idle" | "loading" | "success" | "error";
 
 export function EmailCaptureForm({
   source,
+  topic,
   endpoint = "/api/subscribe",
   placeholder = "your@email.com",
   buttonLabel = "Subscribe",
@@ -54,7 +57,7 @@ export function EmailCaptureForm({
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source }),
+        body: JSON.stringify({ email, source, ...(topic ? { topic } : {}) }),
       });
 
       if (!res.ok) {
