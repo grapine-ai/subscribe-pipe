@@ -313,6 +313,10 @@ export const { POST } = createSubscribeHandler(myProvider);
 
 ## Changelog
 
+### 0.4.1
+
+- **Fixed**: removed tsup build toolchain from `dependencies` — it was incorrectly included as a runtime dependency, bloating installs with ~40 unused packages
+
 ### 0.4.0
 
 - **Resend provider rewritten** to use the correct `POST /contacts` endpoint (was incorrectly using `/audiences/{id}/contacts`)
