@@ -3,19 +3,37 @@ import type { SubscribeProvider } from "../types";
 export interface BrevoProviderConfig {
   /** Brevo API key */
   apiKey: string;
-  /** List ID(s) to add the contact to */
+  /** Default list ID(s) to add the contact to */
   listIds: number[];
-  /** Optional: map source string to a specific list ID */
+  /** Optional: override the default lists based on the subscriber's source */
   sourceListMap?: Record<string, number>;
+  /**
+   * Optional: map of topic name → list ID.
+   * List is added on top of whichever lists are resolved from `listIds` /
+   * `sourceListMap`, so a subscriber ends up in both the base list and the
+   * topic-specific list.
+   *
+   * @example
+   *   topicListMap: {
+   *     "product-a": 42,
+   *     "product-b": 43,
+   *   }
+   */
+  topicListMap?: Record<string, number>;
 }
 
 export function brevoProvider(config: BrevoProviderConfig): SubscribeProvider {
   return {
-    subscribe: async ({ email, source }) => {
-      const listIds =
+    subscribe: async ({ email, source, topic }) => {
+      const baseListIds =
         config.sourceListMap?.[source] != null
           ? [config.sourceListMap[source]]
           : config.listIds;
+
+      const topicListId = topic != null ? config.topicListMap?.[topic] : undefined;
+      const listIds = topicListId != null
+        ? [...new Set([...baseListIds, topicListId])]
+        : baseListIds;
 
       const res = await fetch("https://api.brevo.com/v3/contacts", {
         method: "POST",

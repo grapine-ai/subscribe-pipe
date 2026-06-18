@@ -5,13 +5,28 @@ export interface ConvertKitProviderConfig {
   apiKey: string;
   /** Form ID to subscribe contacts to */
   formId: string;
-  /** Optional: tag IDs to apply to the subscriber */
+  /** Optional: tag IDs applied to every subscriber regardless of topic */
   tagIds?: number[];
+  /**
+   * Optional map of topic name → tag IDs to apply.
+   * Tags are merged with `tagIds` at subscribe time, so a subscriber
+   * receives both the global tags and the topic-specific ones.
+   *
+   * @example
+   *   topicTagMap: {
+   *     "product-a": [111, 222],
+   *     "product-b": [333],
+   *   }
+   */
+  topicTagMap?: Record<string, number[]>;
 }
 
 export function convertkitProvider(config: ConvertKitProviderConfig): SubscribeProvider {
   return {
-    subscribe: async ({ email }) => {
+    subscribe: async ({ email, topic }) => {
+      const topicTags = (topic && config.topicTagMap?.[topic]) ?? [];
+      const tags = [...(config.tagIds ?? []), ...topicTags];
+
       const res = await fetch(
         `https://api.convertkit.com/v3/forms/${config.formId}/subscribe`,
         {
@@ -20,7 +35,7 @@ export function convertkitProvider(config: ConvertKitProviderConfig): SubscribeP
           body: JSON.stringify({
             api_key: config.apiKey,
             email,
-            ...(config.tagIds ? { tags: config.tagIds } : {}),
+            ...(tags.length > 0 ? { tags } : {}),
           }),
         }
       );

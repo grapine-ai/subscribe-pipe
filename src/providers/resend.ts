@@ -4,54 +4,75 @@ export interface ResendProviderConfig {
   /** Resend API key — re_... */
   apiKey: string;
   /**
-   * Map of topic name → Resend audience ID.
-   * Each topic routes subscribers to a separate Resend audience.
+   * Resend segment IDs to assign the contact to.
+   * Segments are created in the Resend dashboard (Audiences → Segments).
+   * Added via a separate POST /contacts/{email}/segments/{id} call after
+   * contact creation — Resend does not support segment assignment in the
+   * create-contact body.
    *
-   * @example
-   *   topics: {
-   *     "product-a": "aud_111aaa",
-   *     "product-b": "aud_222bbb",
-   *   }
+   * @example segmentIds: ["seg_abc123"]
    */
-  topics: Record<string, string>;
+  segmentIds?: string[];
   /**
-   * Topic to use when none is passed at subscribe time.
-   * Must be a key that exists in `topics`.
+   * Resend topic IDs to subscribe the contact to (all set to opt_in).
+   * Topics are created in the Resend dashboard (Audiences → Topics).
+   * Sent as `topics: [{ id, subscription: "opt_in" }]` in the create-contact body.
+   *
+   * @example topicIds: ["top_xyz789"]
    */
-  defaultTopic?: string;
+  topicIds?: string[];
+}
+
+interface ResendContactBody {
+  email: string;
+  unsubscribed: boolean;
+  topics?: { id: string; subscription: "opt_in" | "opt_out" }[];
 }
 
 export function resendProvider(config: ResendProviderConfig): SubscribeProvider {
+  const headers = {
+    Authorization: `Bearer ${config.apiKey}`,
+    "Content-Type": "application/json",
+  };
+
   return {
-    subscribe: async ({ email, topic }) => {
-      const resolvedTopic = topic ?? config.defaultTopic;
-      if (!resolvedTopic) {
-        throw new Error(
-          "Resend: no topic provided. Pass `topic` when calling subscribe(), or set `defaultTopic` in the provider config."
-        );
-      }
-      const audienceId = config.topics[resolvedTopic];
-      if (!audienceId) {
-        throw new Error(
-          `Resend: no audience ID configured for topic "${resolvedTopic}". Add it to the \`topics\` map in your resendProvider config.`
-        );
+    subscribe: async ({ email }) => {
+      const body: ResendContactBody = { email, unsubscribed: false };
+
+      if (config.topicIds?.length) {
+        body.topics = config.topicIds.map((id) => ({ id, subscription: "opt_in" }));
       }
 
-      const res = await fetch(
-        `https://api.resend.com/audiences/${audienceId}/contacts`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${config.apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, unsubscribed: false }),
-        }
-      );
+      // Step 1: create the contact (topics assigned inline)
+      const res = await fetch("https://api.resend.com/contacts", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(
           (err as Record<string, unknown>).message as string ?? `Resend error ${res.status}`
+        );
+      }
+
+      // Step 2: assign segments — requires a separate call per segment
+      if (config.segmentIds?.length) {
+        await Promise.all(
+          config.segmentIds.map(async (segmentId) => {
+            const r = await fetch(
+              `https://api.resend.com/contacts/${encodeURIComponent(email)}/segments/${segmentId}`,
+              { method: "POST", headers }
+            );
+            if (!r.ok) {
+              const err = await r.json().catch(() => ({}));
+              throw new Error(
+                (err as Record<string, unknown>).message as string ??
+                  `Resend segment error ${r.status}`
+              );
+            }
+          })
         );
       }
     },
